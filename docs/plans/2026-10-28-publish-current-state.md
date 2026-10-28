@@ -27,3 +27,9 @@
 ## 人工介入
 
 - GitHub 身份连接或网络不可用时，保留已验证的导出提交并报告阻塞；恢复后仅继续发布步骤。
+
+## 验证记录与当前阻塞
+
+- 2026-10-28：源仓库与脱敏导出仓库各自运行 `AGENT_CONTEXT.md` 的全部六项验证，均通过。
+- 导出仓库 `d326362` 比其 `origin/main` 快进领先一个提交；待发布差异为 22 个文件，`git diff --check`、pre-push 守卫和敏感信息模式扫描通过。
+- GitHub 连接读取到远端 `main=d42dc078a176155fd01a4f025239308b55d5cab1`；本机 `git ls-remote` 连接 GitHub 443 端口超时，GitHub 连接的 `create_blob` 返回 403 `Resource not accessible by integration`。因此远端发布和发布后复核尚未完成。
