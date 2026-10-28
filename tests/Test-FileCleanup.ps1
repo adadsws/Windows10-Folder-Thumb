@@ -1,3 +1,4 @@
+# 在隔离夹具中验证回收与恢复；永久清理只检查调用，不删除文件。
 [CmdletBinding()]
 param()
 
@@ -6,7 +7,7 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $cleanupScript = Join-Path $repositoryRoot 'scripts\file_cleanup.ps1'
 $mainScript = Join-Path $repositoryRoot 'scripts\set_folder_thumb.ps1'
 $fixtureRoot = Join-Path (
-    Join-Path $repositoryRoot '~temp'
+    Join-Path $repositoryRoot '~temp/tests'
 ) ('file-cleanup-{0}' -f [guid]::NewGuid().ToString('N'))
 
 if (-not (Test-Path -LiteralPath $cleanupScript -PathType Leaf)) {
@@ -66,9 +67,14 @@ if (-not (Test-Path -LiteralPath $failedSource)) {
 
 $permanentSource = Join-Path $fixtureRoot 'permanent.ico'
 Set-Content -LiteralPath $permanentSource -Encoding ASCII -Value 'delete me'
+$script:removedPath = $null
+function Remove-Item {
+    param([string]$LiteralPath, [switch]$Force)
+    $script:removedPath = $LiteralPath
+}
 Remove-FilePermanently -LiteralPath $permanentSource
-if (Test-Path -LiteralPath $permanentSource) {
-    Write-Error 'Remove-FilePermanently kept the source file.'
+if ($script:removedPath -ne $permanentSource -or -not (Test-Path -LiteralPath $permanentSource)) {
+    Write-Error 'Remove-FilePermanently did not request isolated permanent cleanup.'
     exit 1
 }
 

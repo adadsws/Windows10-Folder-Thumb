@@ -1,10 +1,11 @@
+# 使用替身进程验证批处理入口，不运行实际图标脚本。
 [CmdletBinding()]
 param()
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $fixtureRoot = Join-Path (
-    Join-Path $repositoryRoot '~temp'
+    Join-Path $repositoryRoot '~temp/tests'
 ) ('launcher-{0}' -f [guid]::NewGuid().ToString('N'))
 $capturePath = Join-Path $fixtureRoot 'powershell-arguments.txt'
 

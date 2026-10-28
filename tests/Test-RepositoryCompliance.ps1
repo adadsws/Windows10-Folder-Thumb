@@ -1,3 +1,4 @@
+# 验证仓库文件跟踪、项目结构与每个目标一份当前 Plan 的约束。
 [CmdletBinding()]
 param(
     [string]$RepositoryRoot
@@ -24,7 +25,9 @@ function Add-ComplianceFailure {
 }
 
 $gitIgnorePath = Join-Path $repositoryRoot '.gitignore'
-$requiredIgnoreRules = @('~outputs/', '~temp/', '.worktrees/', '.venv/')
+$requiredIgnoreRules = @(
+    '~outputs-intermediate/', '~outputs-final/', '~temp/', '.worktrees/', '.venv/'
+)
 
 if (-not (Test-Path -LiteralPath $gitIgnorePath -PathType Leaf)) {
     Add-ComplianceFailure '.gitignore does not exist.'
@@ -59,6 +62,41 @@ foreach ($requiredDocument in @('README.md', 'CHANGELOG.md', 'AGENT_CONTEXT.md')
     }
 }
 
+$activePlanPath = Join-Path $repositoryRoot 'docs/plans'
+if (Test-Path -LiteralPath $activePlanPath -PathType Container) {
+    $activePlans = @(Get-ChildItem -LiteralPath $activePlanPath -File -Filter '*.md')
+    $plansByTarget = @{}
+    foreach ($activePlan in $activePlans) {
+        if ($activePlan.Name -notmatch '^\d{4}-\d{2}-\d{2}-(?<Target>[a-z0-9]+(?:-[a-z0-9]+)*)\.md$') {
+            Add-ComplianceFailure (
+                'Active Plan name must be <date>-<target>.md: {0}' -f $activePlan.Name
+            )
+            continue
+        }
+
+        $target = $Matches.Target
+        if ($plansByTarget.ContainsKey($target)) {
+            Add-ComplianceFailure (
+                'Duplicate active Plan target {0}: {1}, {2}' -f
+                $target, $plansByTarget[$target], $activePlan.Name
+            )
+        }
+        else {
+            $plansByTarget[$target] = $activePlan.Name
+        }
+    }
+}
+
+$legacySpecsPath = Join-Path $repositoryRoot 'docs/superpowers/specs'
+if (Test-Path -LiteralPath $legacySpecsPath -PathType Container) {
+    foreach ($legacySpec in Get-ChildItem -LiteralPath $legacySpecsPath -File -Recurse -Filter '*.md') {
+        $relativeSpecPath = $legacySpec.FullName.Substring($repositoryRoot.Length + 1)
+        Add-ComplianceFailure (
+            'Standalone task spec must be merged into its Plan: {0}' -f $relativeSpecPath
+        )
+    }
+}
+
 $ignoredPaths = @(
     git -c "safe.directory=$safeDirectory" -c core.quotepath=false -C $repositoryRoot `
         ls-files --others --ignored --exclude-standard
@@ -69,7 +107,7 @@ if ($LASTEXITCODE -ne 0) {
 else {
     foreach ($ignoredPath in $ignoredPaths) {
         $normalizedPath = $ignoredPath.Replace('\', '/')
-        if ($normalizedPath -notmatch '^(~outputs|~temp|\.worktrees|\.venv)(/|$)') {
+        if ($normalizedPath -notmatch '^(~outputs-intermediate|~outputs-final|~temp|\.worktrees|\.venv)(/|$)') {
             Add-ComplianceFailure (
                 'Repository file is hidden by a Git ignore source: {0}' -f $normalizedPath
             )
@@ -87,7 +125,7 @@ if ($isProjectRepository) {
         }
     }
 
-    foreach ($legacyPath in @('~archived', '~ref', 'output', 'set_folder_thumb.ps1')) {
+    foreach ($legacyPath in @('~archived', '~ref', '~outputs', 'output', 'set_folder_thumb.ps1')) {
         if (Test-Path -LiteralPath (Join-Path $repositoryRoot $legacyPath)) {
             Add-ComplianceFailure ('Legacy project path must be migrated: {0}' -f $legacyPath)
         }

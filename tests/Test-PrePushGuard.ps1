@@ -1,3 +1,4 @@
+# 以有限标准输入运行 pre-push 守卫，验证本地专用路径和发布范围。
 [CmdletBinding()]
 param()
 
@@ -26,7 +27,7 @@ function Invoke-PathCheck {
 
     $previousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    $output = & $shellPath $hookPath -CheckPath $Path 2>&1
+    $output = '' | & $shellPath $hookPath -CheckPath $Path 2>&1
     $exitCode = $LASTEXITCODE
     $ErrorActionPreference = $previousErrorActionPreference
 
@@ -64,15 +65,21 @@ if ($archivedResult.Output -notmatch '~archive/old-file.txt') {
     exit 1
 }
 
-$outputsResult = Invoke-PathCheck -Path '~outputs/audit/result.txt'
-if ($outputsResult.ExitCode -eq 0) {
-    Write-Error 'Pre-push hook allowed an output path.'
-    exit 1
-}
+foreach ($blockedOutputPath in @(
+    '~outputs-intermediate/audit/result.txt',
+    '~outputs-final/delivery/result.txt',
+    '~outputs/legacy/result.txt'
+)) {
+    $outputsResult = Invoke-PathCheck -Path $blockedOutputPath
+    if ($outputsResult.ExitCode -eq 0) {
+        Write-Error ('Pre-push hook allowed an output path: {0}' -f $blockedOutputPath)
+        exit 1
+    }
 
-if ($outputsResult.Output -notmatch '~outputs/audit/result.txt') {
-    Write-Error 'Pre-push hook did not identify the blocked output path.'
-    exit 1
+    if ($outputsResult.Output -notmatch [regex]::Escape($blockedOutputPath)) {
+        Write-Error ('Pre-push hook did not identify the blocked output path: {0}' -f $blockedOutputPath)
+        exit 1
+    }
 }
 
 foreach ($publishablePath in @(
@@ -88,9 +95,15 @@ foreach ($publishablePath in @(
 }
 
 $hookScriptPath = Join-Path $repositoryRoot '.githooks\pre-push.ps1'
-foreach ($blockedUnicodePath in @('~archive/中文.txt', '~outputs/中文.txt', 'secrets/密钥.env')) {
+foreach ($blockedUnicodePath in @(
+    '~archive/中文.txt',
+    '~outputs-intermediate/中文.txt',
+    '~outputs-final/中文.txt',
+    '~outputs/中文.txt',
+    'secrets/密钥.env'
+)) {
     $unicodeFixtureRoot = Join-Path (
-        Join-Path $repositoryRoot '~temp'
+        Join-Path $repositoryRoot '~temp/tests'
     ) ('pre-push-unicode-{0}' -f [guid]::NewGuid().ToString('N'))
     $unicodeFilePath = Join-Path $unicodeFixtureRoot $blockedUnicodePath
 

@@ -1,3 +1,4 @@
+# 使用隔离 Git 仓库验证合规检查的正常与拒绝路径。
 [CmdletBinding()]
 param()
 
@@ -5,7 +6,7 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $complianceScript = Join-Path $PSScriptRoot 'Test-RepositoryCompliance.ps1'
 $fixtureRoot = Join-Path (
-    Join-Path $repositoryRoot '~temp'
+    Join-Path $repositoryRoot '~temp/tests'
 ) ('repository-compliance-{0}' -f [guid]::NewGuid().ToString('N'))
 
 function Invoke-ComplianceCheck {
@@ -44,12 +45,14 @@ if ($directResult.ExitCode -ne 0) {
 [void](New-Item -ItemType Directory -Path $fixtureRoot -Force)
 [void](New-Item -ItemType Directory -Path (Join-Path $fixtureRoot 'output') -Force)
 [void](New-Item -ItemType Directory -Path (Join-Path $fixtureRoot '~temp') -Force)
-[void](New-Item -ItemType Directory -Path (Join-Path $fixtureRoot '~outputs') -Force)
+[void](New-Item -ItemType Directory -Path (Join-Path $fixtureRoot '~outputs-intermediate') -Force)
+[void](New-Item -ItemType Directory -Path (Join-Path $fixtureRoot '~outputs-final') -Force)
 [void](New-Item -ItemType Directory -Path (Join-Path $fixtureRoot '.worktrees') -Force)
 [void](New-Item -ItemType Directory -Path (Join-Path $fixtureRoot '.venv') -Force)
 
 Set-Content -LiteralPath (Join-Path $fixtureRoot '.gitignore') -Encoding UTF8 -Value @(
-    '~outputs/'
+    '~outputs-intermediate/'
+    '~outputs-final/'
     '~temp/'
     '.worktrees/'
     '.venv/'
@@ -70,8 +73,10 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Set-Content -LiteralPath (Join-Path $fixtureRoot '~outputs\中文.txt') `
-    -Encoding UTF8 -Value 'allowed output'
+Set-Content -LiteralPath (Join-Path $fixtureRoot '~outputs-intermediate\中文.txt') `
+    -Encoding UTF8 -Value 'allowed intermediate output'
+Set-Content -LiteralPath (Join-Path $fixtureRoot '~outputs-final\中文.txt') `
+    -Encoding UTF8 -Value 'allowed final output'
 Set-Content -LiteralPath (Join-Path $fixtureRoot '~temp\中文.txt') `
     -Encoding UTF8 -Value 'allowed temporary file'
 Set-Content -LiteralPath (Join-Path $fixtureRoot '.worktrees\中文.txt') `
@@ -87,6 +92,53 @@ if ($baselineResult.ExitCode -ne 0) {
     )
     exit 1
 }
+
+$fixturePlansPath = Join-Path $fixtureRoot 'docs/plans'
+[void](New-Item -ItemType Directory -Path $fixturePlansPath -Force)
+Set-Content -LiteralPath (Join-Path $fixturePlansPath '2026-10-22-first.md') -Encoding UTF8 -Value '# First Plan'
+& git -C $fixtureRoot add docs/plans/2026-10-22-first.md
+$onePlanResult = Invoke-ComplianceCheck -Root $fixtureRoot
+if ($onePlanResult.ExitCode -ne 0) {
+    Write-Error ('Compliance check rejected one active Plan: {0}' -f $onePlanResult.Output)
+    exit 1
+}
+
+$secondPlanPath = Join-Path $fixturePlansPath '2026-10-22-second.md'
+Set-Content -LiteralPath $secondPlanPath -Encoding UTF8 -Value '# Second Plan'
+& git -C $fixtureRoot add docs/plans/2026-10-22-second.md
+$twoPlansResult = Invoke-ComplianceCheck -Root $fixtureRoot
+if ($twoPlansResult.ExitCode -ne 0) {
+    Write-Error ('Compliance check rejected different active Plan targets: {0}' -f $twoPlansResult.Output)
+    exit 1
+}
+
+$archivedFixturePath = Join-Path $fixtureRoot '~temp/plan-fixtures'
+[void](New-Item -ItemType Directory -Path $archivedFixturePath -Force)
+$duplicatePlanPath = Join-Path $fixturePlansPath '2026-10-23-first.md'
+Set-Content -LiteralPath $duplicatePlanPath -Encoding UTF8 -Value '# Duplicate First Plan'
+& git -C $fixtureRoot add docs/plans/2026-10-23-first.md
+$duplicatePlanResult = Invoke-ComplianceCheck -Root $fixtureRoot
+if ($duplicatePlanResult.ExitCode -eq 0 -or ($duplicatePlanResult.Output -replace '\s', '') -notmatch 'DuplicateactivePlantargetfirst') {
+    Write-Error ('Compliance check did not reject a duplicate Plan target: {0}' -f $duplicatePlanResult.Output)
+    exit 1
+}
+
+Move-Item -LiteralPath $duplicatePlanPath -Destination (Join-Path $archivedFixturePath '2026-10-23-first.md')
+& git -C $fixtureRoot reset --quiet -- docs/plans/2026-10-23-first.md
+
+$fixtureSpecsPath = Join-Path $fixtureRoot 'docs/superpowers/specs'
+[void](New-Item -ItemType Directory -Path $fixtureSpecsPath -Force)
+$fixtureSpecPath = Join-Path $fixtureSpecsPath 'standalone.md'
+Set-Content -LiteralPath $fixtureSpecPath -Encoding UTF8 -Value '# Standalone spec'
+& git -C $fixtureRoot add docs/superpowers/specs/standalone.md
+$standaloneSpecResult = Invoke-ComplianceCheck -Root $fixtureRoot
+if ($standaloneSpecResult.ExitCode -eq 0 -or ($standaloneSpecResult.Output -replace '\s', '') -notmatch 'Standalonetaskspec') {
+    Write-Error ('Compliance check did not reject a standalone task spec: {0}' -f $standaloneSpecResult.Output)
+    exit 1
+}
+
+Move-Item -LiteralPath $fixtureSpecPath -Destination (Join-Path $archivedFixturePath 'standalone.md')
+& git -C $fixtureRoot reset --quiet -- docs/superpowers/specs/standalone.md
 
 Set-Content -LiteralPath (Join-Path $fixtureRoot 'private-local.txt') `
     -Encoding UTF8 -Value 'must be tracked'

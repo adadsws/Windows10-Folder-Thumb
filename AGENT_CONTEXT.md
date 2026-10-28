@@ -10,11 +10,12 @@
 
 - `scripts/`：运行源码和文件清理边界。
 - `tests/`：仓库合规、启动入口和 pre-push 守卫测试。
-- `docs/plans/`：已批准但尚未完成的实施计划。
-- `docs/finished_plans/`：已完成计划。
+- `docs/plans/`：各当前目标的唯一 Plan，包含所属任务的规范、需求、样例、验收标准与验证记录；不同目标可并行保留 Plan。
+- `docs/finished_plans/`：已完成目标的 Plan。
 - `reference/`：不参与运行的固定上游 submodule 与重建说明。
 - `~archive/`：只在本地 Git 保留、不得远程发布的旧文件。
-- `~outputs/`：可审计或复用的本地输出，不纳入 Git。
+- `~outputs-intermediate/`：可重建、供后续检查或复用的中间输出，不纳入 Git。
+- `~outputs-final/`：可重建、供审计或交付的最终输出，不纳入 Git。
 - `~temp/`：可随时重建的临时文件，不纳入 Git。
 
 ## 开发与验证

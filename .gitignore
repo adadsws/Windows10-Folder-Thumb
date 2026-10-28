@@ -1,4 +1,5 @@
-~outputs/
+~outputs-intermediate/
+~outputs-final/
 ~temp/
 .worktrees/
 .venv/

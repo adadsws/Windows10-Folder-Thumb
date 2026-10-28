@@ -1,3 +1,4 @@
+# 检查待推送历史中的本地专用路径；只读 Git 历史，不执行发布。
 [CmdletBinding()]
 param(
     [string]$RemoteName,
@@ -21,7 +22,7 @@ function Test-IsLocalOnlyPath {
 
     $normalizedPath = $Path.Replace('\', '/')
 
-    if ($normalizedPath -match '^(~archive|~outputs)(/|$)') {
+    if ($normalizedPath -match '^(~archive|~outputs|~outputs-intermediate|~outputs-final)(/|$)') {
         return $true
     }
 
