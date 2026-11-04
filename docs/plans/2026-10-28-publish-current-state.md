@@ -2,7 +2,7 @@
 
 ## 目标与范围
 
-- 将源仓库当前提交 `0d1543a` 的可公开文件同步到独立的 `~temp/github-export/` 仓库。
+- 将源仓库当前提交 `02007a7` 及本次发布记录的可公开文件同步到独立的 `~temp/github-export/` 仓库。
 - 保留远端 `main` 的现有历史，只做快进发布；源仓库 `~archive/` 和其他本地专用路径不进入远端。
 - 源仓库开始时工作树和 index 均为空，没有待提交的文件；本计划与必要归档修改需在本地提交。
 
@@ -30,6 +30,7 @@
 
 ## 验证记录与当前阻塞
 
-- 2026-10-28：源仓库与脱敏导出仓库各自运行 `AGENT_CONTEXT.md` 的全部六项验证，均通过。
+- 2026-10-28：源仓库与脱敏导出仓库各自运行当时根目录 `AGENT_CONTEXT.md` 的全部六项验证，均通过；当前规范已迁至 `docs/AGENT_CONTEXT.md`。
 - 导出仓库 `d326362` 比其 `origin/main` 快进领先一个提交；待发布差异为 22 个文件，`git diff --check`、pre-push 守卫和敏感信息模式扫描通过。
 - GitHub 连接读取到远端 `main=d42dc078a176155fd01a4f025239308b55d5cab1`；本机 `git ls-remote` 连接 GitHub 443 端口超时，GitHub 连接的 `create_blob` 返回 403 `Resource not accessible by integration`。因此远端发布和发布后复核尚未完成。
+- 2026-11-04：用户明确要求提交全部并 push；源仓库工作树干净，`main` 远端仍为 `d42dc078a176155fd01a4f025239308b55d5cab1`。远端仓库现名 `adadsws/Windows10-Folder-Thumb`；本机 HTTPS 仍超时。继续沿现有导出历史快进发布，绝不直接推送含 `~archive/` 历史的源仓库。

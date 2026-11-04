@@ -58,8 +58,9 @@ Set-Content -LiteralPath (Join-Path $fixtureRoot '.gitignore') -Encoding UTF8 -V
     '.venv/'
 )
 Set-Content -LiteralPath (Join-Path $fixtureRoot 'README.md') -Encoding UTF8 -Value '# Test'
-Set-Content -LiteralPath (Join-Path $fixtureRoot 'CHANGELOG.md') -Encoding UTF8 -Value '# Test'
-Set-Content -LiteralPath (Join-Path $fixtureRoot 'AGENT_CONTEXT.md') -Encoding UTF8 -Value '# Test'
+[void](New-Item -ItemType Directory -Path (Join-Path $fixtureRoot 'docs') -Force)
+Set-Content -LiteralPath (Join-Path $fixtureRoot 'docs/CHANGELOG.md') -Encoding UTF8 -Value '# Test'
+Set-Content -LiteralPath (Join-Path $fixtureRoot 'docs/AGENT_CONTEXT.md') -Encoding UTF8 -Value '# Test'
 
 & git init --quiet $fixtureRoot
 if ($LASTEXITCODE -ne 0) {
@@ -67,7 +68,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-& git -C $fixtureRoot add .gitignore README.md CHANGELOG.md AGENT_CONTEXT.md
+& git -C $fixtureRoot add .gitignore README.md docs/CHANGELOG.md docs/AGENT_CONTEXT.md
 if ($LASTEXITCODE -ne 0) {
     Write-Error 'Unable to stage the compliance test baseline.'
     exit 1
@@ -92,6 +93,15 @@ if ($baselineResult.ExitCode -ne 0) {
     )
     exit 1
 }
+
+$legacyDocumentPath = Join-Path $fixtureRoot 'AGENT_CONTEXT.md'
+Set-Content -LiteralPath $legacyDocumentPath -Encoding UTF8 -Value '# Legacy location'
+$legacyDocumentResult = Invoke-ComplianceCheck -Root $fixtureRoot
+if ($legacyDocumentResult.ExitCode -eq 0 -or ($legacyDocumentResult.Output -replace '\s', '') -notmatch 'mustbeindocs/') {
+    Write-Error ('Compliance check did not reject a root project document: {0}' -f $legacyDocumentResult.Output)
+    exit 1
+}
+Move-Item -LiteralPath $legacyDocumentPath -Destination (Join-Path $fixtureRoot '~temp/legacy-agent-context.md')
 
 $fixturePlansPath = Join-Path $fixtureRoot 'docs/plans'
 [void](New-Item -ItemType Directory -Path $fixturePlansPath -Force)

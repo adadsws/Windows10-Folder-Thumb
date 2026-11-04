@@ -55,10 +55,16 @@ else {
     }
 }
 
-foreach ($requiredDocument in @('README.md', 'CHANGELOG.md', 'AGENT_CONTEXT.md')) {
+foreach ($requiredDocument in @('README.md', 'docs/CHANGELOG.md', 'docs/AGENT_CONTEXT.md')) {
     $requiredDocumentPath = Join-Path $repositoryRoot $requiredDocument
     if (-not (Test-Path -LiteralPath $requiredDocumentPath -PathType Leaf)) {
         Add-ComplianceFailure ("Required document is missing: {0}" -f $requiredDocument)
+    }
+}
+
+foreach ($legacyDocument in @('CHANGELOG.md', 'AGENT_CONTEXT.md', 'AGENTS.md')) {
+    if (Test-Path -LiteralPath (Join-Path $repositoryRoot $legacyDocument)) {
+        Add-ComplianceFailure ('Project document must be in docs/: {0}' -f $legacyDocument)
     }
 }
 
@@ -116,7 +122,7 @@ else {
 }
 
 if ($isProjectRepository) {
-    foreach ($requiredProjectDocument in @('AGENTS.md', 'reference/README.md', '.gitmodules')) {
+    foreach ($requiredProjectDocument in @('docs/AGENTS.md', 'reference/README.md', '.gitmodules')) {
         $requiredProjectDocumentPath = Join-Path $repositoryRoot $requiredProjectDocument
         if (-not (Test-Path -LiteralPath $requiredProjectDocumentPath -PathType Leaf)) {
             Add-ComplianceFailure (
