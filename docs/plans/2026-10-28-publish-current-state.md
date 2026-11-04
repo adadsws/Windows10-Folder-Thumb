@@ -34,3 +34,4 @@
 - 导出仓库 `d326362` 比其 `origin/main` 快进领先一个提交；待发布差异为 22 个文件，`git diff --check`、pre-push 守卫和敏感信息模式扫描通过。
 - GitHub 连接读取到远端 `main=d42dc078a176155fd01a4f025239308b55d5cab1`；本机 `git ls-remote` 连接 GitHub 443 端口超时，GitHub 连接的 `create_blob` 返回 403 `Resource not accessible by integration`。因此远端发布和发布后复核尚未完成。
 - 2026-11-04：用户明确要求提交全部并 push；源仓库工作树干净，`main` 远端仍为 `d42dc078a176155fd01a4f025239308b55d5cab1`。远端仓库现名 `adadsws/Windows10-Folder-Thumb`；本机 HTTPS 仍超时。继续沿现有导出历史快进发布，绝不直接推送含 `~archive/` 历史的源仓库。
+- 2026-11-04：最新公开文件已同步至导出仓库并提交为 `620e2c9`；导出仓库六项规定验证、差异检查和敏感信息模式扫描通过。`git push origin main` 因 GitHub 443 端口连接超时失败；GitHub 连接器 `create_blob` 返回 403 `Resource not accessible by integration`。远端仍未更新。恢复网络或连接器写权限后，先重新核对远端 `main`，仅在仍可快进时从导出仓库继续发布。
